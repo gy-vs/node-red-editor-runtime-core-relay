@@ -33,6 +33,8 @@ describe("api/editor/settings", function() {
         app = express();
         app.use(bodyParser.json());
         app.get("/settings",info.runtimeSettings);
+        app.get("/settings/telemetry",info.telemetrySettings);
+        app.post("/settings/telemetry",info.updateTelemetrySettings);
     });
 
     after(function() {
@@ -88,6 +90,69 @@ describe("api/editor/settings", function() {
             res.body.should.not.have.property("editorTheme");
             done();
         });
+    });
+
+    it('returns the telemetry status', function(done) {
+        info.init({},{
+            settings: {
+                getTelemetryStatus: function(opts) {
+                    return Promise.resolve({enabled:false, locked:true, prompt:false, update:null});
+                }
+            }
+        });
+        request(app)
+        .get("/settings/telemetry")
+        .expect(200)
+        .end(function(err,res) {
+            if (err) {
+                return done(err);
+            }
+            res.body.should.have.property("enabled", false);
+            res.body.should.have.property("locked", true);
+            res.body.should.have.property("prompt", false);
+            done();
+        });
+    });
+
+    it('updates the telemetry status', function(done) {
+        var postedEnabled;
+        info.init({},{
+            settings: {
+                updateTelemetryStatus: function(opts) {
+                    postedEnabled = opts.enabled;
+                    return Promise.resolve({enabled:opts.enabled, locked:false, prompt:false, update:null});
+                }
+            }
+        });
+        request(app)
+        .post("/settings/telemetry")
+        .send({enabled: true})
+        .expect(200)
+        .end(function(err,res) {
+            if (err) {
+                return done(err);
+            }
+            postedEnabled.should.eql(true);
+            res.body.should.have.property("enabled", true);
+            done();
+        });
+    });
+
+    it('returns 400 when the telemetry status cannot be changed', function(done) {
+        info.init({},{
+            settings: {
+                updateTelemetryStatus: function(opts) {
+                    var err = new Error("locked");
+                    err.status = 400;
+                    return Promise.reject(err);
+                }
+            }
+        });
+        request(app)
+        .post("/settings/telemetry")
+        .send({enabled: true})
+        .expect(400)
+        .end(done);
     });
 
 });

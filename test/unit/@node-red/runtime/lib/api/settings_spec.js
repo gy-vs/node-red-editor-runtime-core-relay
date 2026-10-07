@@ -411,6 +411,49 @@ describe("runtime-api/settings", function() {
             }).catch(done);
         })
     });
+    describe("telemetry", function() {
+        var setError = false;
+        before(function() {
+            settings.init({
+                telemetry: {
+                    getStatus: function() {
+                        return {enabled: true, locked: false, prompt: false, update: null};
+                    },
+                    setEnabled: function(opts) {
+                        if (setError) {
+                            var err = new Error("locked");
+                            err.code = "telemetry_locked";
+                            return Promise.reject(err);
+                        }
+                        return Promise.resolve();
+                    }
+                },
+                log: mockLog()
+            });
+        });
+        afterEach(function() {
+            setError = false;
+        });
+        it("returns the telemetry status", function() {
+            return settings.getTelemetryStatus({}).then(function(result) {
+                result.should.eql({enabled: true, locked: false, prompt: false, update: null});
+            });
+        });
+        it("updates the telemetry status", function() {
+            return settings.updateTelemetryStatus({enabled: false}).then(function(result) {
+                result.should.have.property("enabled", true);
+            });
+        });
+        it("propagates a set failure with a 400 status", function(done) {
+            setError = true;
+            settings.updateTelemetryStatus({enabled: true}).then(function() {
+                done(new Error("expected rejection"));
+            }).catch(function(err) {
+                err.should.have.property("status", 400);
+                done();
+            }).catch(done);
+        });
+    });
     describe("getUserKeys", function() {
         before(function() {
             settings.init({
