@@ -74,6 +74,54 @@ describe("runtime-api/settings", function() {
 
             })
         });
+        it("includes telemetry settings when available", function() {
+            settings.init({
+                settings: {
+                    httpNodeRoot: "testHttpNodeRoot",
+                    version: "testVersion",
+                    exportNodeSettings: (obj) => {},
+                },
+                plugins: {
+                    exportPluginSettings: (obj) => {}
+                },
+                nodes: {
+                    listContextStores: () => { return {stores:["file","memory"], default: "file"} },
+                    installerEnabled: () => false,
+                    getCredentialKeyType: () => "test-key-type"
+                },
+                library: {getLibraries: () => ["lib1"] },
+                storage: {},
+                telemetry: {
+                    getTelemetrySettings: () => { return { enabled: true, configurable: true, prompt: false } }
+                }
+            })
+            return settings.getRuntimeSettings({}).then(result => {
+                result.should.have.property("telemetry");
+                result.telemetry.should.eql({ enabled: true, configurable: true, prompt: false });
+            })
+        });
+        it("omits telemetry settings when not available", function() {
+            settings.init({
+                settings: {
+                    httpNodeRoot: "testHttpNodeRoot",
+                    version: "testVersion",
+                    exportNodeSettings: (obj) => {},
+                },
+                plugins: {
+                    exportPluginSettings: (obj) => {}
+                },
+                nodes: {
+                    listContextStores: () => { return {stores:["file","memory"], default: "file"} },
+                    installerEnabled: () => false,
+                    getCredentialKeyType: () => "test-key-type"
+                },
+                library: {getLibraries: () => ["lib1"] },
+                storage: {}
+            })
+            return settings.getRuntimeSettings({}).then(result => {
+                result.should.not.have.property("telemetry");
+            })
+        });
         it("gets the filtered user settings", function() {
             settings.init({
                 settings: {
